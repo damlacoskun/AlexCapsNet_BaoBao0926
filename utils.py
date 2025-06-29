@@ -1,18 +1,36 @@
 import copy
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import Dataset
-from torchvision import transforms
-import os
-import torchvision
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms, datasets
 import time
 from torch.optim import Adam, lr_scheduler
 from torch.utils.tensorboard import SummaryWriter
-
+from medmnist import BreastMNIST as _BreastMNIST
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+
+def get_breastmnist(batch_size, data_dir='./datasets/BreastMNIST', num_workers=4):
+    """
+    MedMNIST BreastMNIST veri setini indirir ve train/test DataLoader döner.
+    Görüntüler 28×28 boyutuna resize edilir.
+    """
+    # root klasörünü yarat (eğer yoksa)
+    os.makedirs(data_dir, exist_ok=True)
+
+    transform = transforms.Compose([
+        transforms.Resize((28, 28)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[.5], std=[.5])
+    ])
+    train_ds = _BreastMNIST(root=data_dir, split='train', download=True, transform=transform)
+    test_ds  = _BreastMNIST(root=data_dir, split='test',  download=True, transform=transform)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=num_workers)
+    test_loader  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    return train_loader, test_loader
 # Primary CapsNet Layer
 class PrimaryCaps(nn.Module):
 
@@ -870,6 +888,27 @@ class dataloaders():
 
         return train_loader, test_loader
 
+    from torch.utils.data import Dataset, DataLoader
+    from torchvision import transforms
+# … import your data source, e.g. a custom Dataset or MedMNIST BreastMNIST …
+
+    def get_breastmnist(batch_size, data_dir='./datasets/BreastMNIST', num_workers=4):
+        """
+        MedMNIST BreastMNIST veri setini indirir ve train/test DataLoader döner.
+        """
+        info = MEDINFO['breastmnist']
+        img_h, img_w = info['height'], info['width']     # ← height/width olarak değiştirildi
+        transform = transforms.Compose([
+            transforms.Resize((img_h, img_w)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[.5], std=[.5])
+        ])
+        train_ds = _BreastMNIST(root=data_dir, split='train', download=True, transform=transform)
+        test_ds  = _BreastMNIST(root=data_dir, split='test',  download=True, transform=transform)
+        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=num_workers)
+        test_loader  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        return train_loader, test_loader
+
 # Dataloader for reconstruction
 class dataloaders_recon():
     """
@@ -1086,4 +1125,3 @@ class dataloaders_recon():
                                                   shuffle=False, num_workers=4)
 
         return train_loader, test_loader1, test_loader2
-

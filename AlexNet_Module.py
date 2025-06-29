@@ -28,7 +28,7 @@ class AlexNet(nn.Module):
             nn.Linear(4096, 4096),
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(4096, 10),
+            nn.Linear(4096, 2),
         )
 
     def forward(self, img):
@@ -95,7 +95,7 @@ class AlexNet_CIFAR10(nn.Module):
             nn.Linear(4096, 4096),
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(4096, 10),
+            nn.Linear(4096, 2),
         )
 
     def forward(self, img):
@@ -401,14 +401,15 @@ class AlexCapsNet_MNIST(nn.Module):
         self.Cap = nn.Sequential(
             utils.PrimaryCaps(num_caps=32, in_channel=256, out_channel=8, kersel_size=2, stride=1, padding=0),
             # 32*[50,8,4,4]->[50,8,16,32]->[50,8,16*32(512)]
-            utils.DenseCapsule(in_num_caps=512, in_dim_caps=8, out_num_caps=10, out_dim_caps=16,
+            utils.DenseCapsule(in_num_caps=512, in_dim_caps=8, out_num_caps=2, out_dim_caps=16,
                                device=device, routings=3)
         )
 
     def forward(self, x):
         x = self.conv(x)
-        x = self.Cap(x)
-        return x
+        v = self.Cap(x)
+        logits = v.norm(dim=2)
+        return logits
 
 # 2: AlexNet
 class AlexNet_MNIST(nn.Module):
@@ -437,7 +438,7 @@ class AlexNet_MNIST(nn.Module):
             nn.ReLU(),
             nn.Dropout(0.5),
             # total class: 10
-            nn.Linear(4096, 10),
+            nn.Linear(4096, 2),
         )
 
     def forward(self, img):
@@ -458,14 +459,15 @@ class CapsNet_MNIST(nn.Module):
         self.Cap = nn.Sequential(
             utils.PrimaryCaps(num_caps=32, in_channel=256, out_channel=8, kersel_size=9, stride=2, padding=0), # [batch, 8, 32, 6, 6]
             # 32*[bs,8,6,6]->[50,8,36,32]->[50,8,36*32(1152)]
-            utils.DenseCapsule(in_num_caps=1152, in_dim_caps=8, out_num_caps=10, out_dim_caps=16,
+            utils.DenseCapsule(in_num_caps=1152, in_dim_caps=8, out_num_caps=2, out_dim_caps=16,
                                device=device, routings=3)
         )
 
     def forward(self, x):
         x = self.conv(x)
-        x = self.Cap(x)
-        return x
+        v = self.Cap(x)
+        logits = v.norm(dim=2)
+        return logits
 
 # 4 CapNet-Recon
 class CapsNet_Recon_MNIST(nn.Module):
@@ -478,10 +480,10 @@ class CapsNet_Recon_MNIST(nn.Module):
         self.Cap = nn.Sequential(
             utils.PrimaryCaps(num_caps=32, in_channel=256, out_channel=8, kersel_size=9, stride=2, padding=0), # [batch, 8, 32, 6, 6]
             # 32*[bs,8,6,6]->[50,8,36,32]->[50,8,36*32(1152)]
-            utils.DenseCapsule(in_num_caps=1152, in_dim_caps=8, out_num_caps=10, out_dim_caps=16,
+            utils.DenseCapsule(in_num_caps=1152, in_dim_caps=8, out_num_caps=2, out_dim_caps=16,
                                device=device, routings=3)
         )
-        self.reconstruction = utils.ReconstructionNet(num_dim=16, num_caps=10, img_size=28, original_chanel=1)
+        self.reconstruction = utils.ReconstructionNet(num_dim=16, num_caps=2, img_size=28, original_chanel=1)
 
     def forward(self, x, targets):
         feature = self.conv(x)
@@ -511,10 +513,10 @@ class AlexCapsNet_Recon_MNIST(nn.Module):
         self.Cap = nn.Sequential(
             utils.PrimaryCaps(num_caps=32, in_channel=256, out_channel=8, kersel_size=2, stride=1, padding=0),
             # 32*[50,8,4,4]->[50,8,16,32]->[50,8,16*32(512)]
-            utils.DenseCapsule(in_num_caps=512, in_dim_caps=8, out_num_caps=10, out_dim_caps=16,
+            utils.DenseCapsule(in_num_caps=512, in_dim_caps=8, out_num_caps=2, out_dim_caps=16,
                                device=device, routings=3)
         )
-        self.reconstruction = utils.ReconstructionNet(num_dim=16, num_caps=10, img_size=28, original_chanel=1)
+        self.reconstruction = utils.ReconstructionNet(num_dim=16, num_caps=2, img_size=28, original_chanel=1)
 
     def forward(self, x, targets):
         feature = self.conv(x)
@@ -540,7 +542,7 @@ class S_AlexCapsNet_MNIST(nn.Module):
         self.Cap = nn.Sequential(
             utils.PrimaryCaps(num_caps=32, in_channel=384, out_channel=8, kersel_size=2, stride=1, padding=0),
             # 32*[50,8,4,4]->[50,8,16,32]->[50,8,16*32(512)]
-            utils.DenseCapsule(in_num_caps=512, in_dim_caps=8, out_num_caps=10, out_dim_caps=16,
+            utils.DenseCapsule(in_num_caps=512, in_dim_caps=8, out_num_caps=2, out_dim_caps=16,
                                device=device, routings=3)
         )
 
