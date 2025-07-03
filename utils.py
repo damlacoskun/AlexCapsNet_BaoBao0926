@@ -1,36 +1,19 @@
 import copy
-import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, datasets
+from torch.utils.data import Dataset
+from torchvision import transforms
+import os
+import torchvision
 import time
 from torch.optim import Adam, lr_scheduler
 from torch.utils.tensorboard import SummaryWriter
+
 from medmnist import BreastMNIST as _BreastMNIST
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-
-def get_breastmnist(batch_size, data_dir='./datasets/BreastMNIST', num_workers=4):
-    """
-    MedMNIST BreastMNIST veri setini indirir ve train/test DataLoader döner.
-    Görüntüler 28×28 boyutuna resize edilir.
-    """
-    # root klasörünü yarat (eğer yoksa)
-    os.makedirs(data_dir, exist_ok=True)
-
-    transform = transforms.Compose([
-        transforms.Resize((28, 28)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[.5], std=[.5])
-    ])
-    train_ds = _BreastMNIST(root=data_dir, split='train', download=True, transform=transform)
-    test_ds  = _BreastMNIST(root=data_dir, split='test',  download=True, transform=transform)
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=num_workers)
-    test_loader  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False, num_workers=num_workers)
-    return train_loader, test_loader
 # Primary CapsNet Layer
 class PrimaryCaps(nn.Module):
 
@@ -400,7 +383,7 @@ def train_capOutput(model, train_loader, test_loader, args):
         epoch_start_t = time.time()     # record trainning start time
         for batch_index, (imgs, targets) in enumerate(train_loader):
             t1 = time.time()
-            imgs, targets = imgs.to(device), targets.to(device)     # GPU or CPU training
+            imgs, targets = imgs.to(device), targets.squeeze().long().to(device)     # GPU or CPU training
             if args.reconstruction:
                 v, reconstruction = model(imgs, targets)
                 norm = vtoNorm(v)
@@ -492,7 +475,7 @@ def test_capOutput(model, test_loader, args):
             conmatrix[i] = copy.deepcopy(inner_matrix)
 
         for i, (image, targets) in enumerate(test_loader):
-            image, targets = image.to(device), targets.to(device)
+            image, targets = image.to(device), targets.squeeze().long().to(device)
             if args.reconstruction:                     # with reconstruction
                 output, reconstruction = model(image, targets)   # predict the output
                 norm = vtoNorm(output)                  # [bs,num of cap, cap dim]->[bs, num of cap]
@@ -579,7 +562,7 @@ def train(model, train_loader, test_loader, args):
         print(f"Epoch {epoch + 1}, Current Learning Rate: {optimizer.param_groups[0]['lr']}")
         epoch_start_t = time.time()     # record trainning start time
         for batch_index, (imgs, targets) in enumerate(train_loader):
-            imgs, targets = imgs.to(device), targets.to(device)
+            imgs, targets = imgs.to(device), targets.squeeze().long().to(device)
 
             if args.reconstruction:
                 outputs, reconstruction = model(imgs, targets)
@@ -672,7 +655,7 @@ def test(model, test_loader, args):
 
 
         for i, (image, targets) in enumerate(test_loader):
-            image, targets = image.to(device), targets.to(device)
+            image, targets = image.to(device), targets.squeeze().long().to(device)
 
             if args.reconstruction:                     # with reconstruction
                 outputs, reconstruction = model(image, targets)   # predict the output
@@ -725,7 +708,7 @@ class dataloaders():
     # CIFAR10
     def CIFAR10(self, batch_size):
         transform = transforms.Compose([
-            transforms.transforms.RandomRotation(0.5),
+            transforms.RandomRotation(0.5),
             transforms.RandomGrayscale(),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -888,28 +871,27 @@ class dataloaders():
 
         return train_loader, test_loader
 
-    from torch.utils.data import Dataset, DataLoader
-    from torchvision import transforms
-# … import your data source, e.g. a custom Dataset or MedMNIST BreastMNIST …
-
-    def get_breastmnist(batch_size, data_dir='./datasets/BreastMNIST', num_workers=4):
+    def BreastMNIST(self, batch_size, data_dir='./datasets/BreastMNIST', num_workers=4):
         """
         MedMNIST BreastMNIST veri setini indirir ve train/test DataLoader döner.
+        Görüntüler 28×28 boyutuna resize edilir.
         """
-        info = MEDINFO['breastmnist']
-        img_h, img_w = info['height'], info['width']     # ← height/width olarak değiştirildi
+        # root klasörünü yarat (eğer yoksa)
+        os.makedirs(data_dir, exist_ok=True)
+
         transform = transforms.Compose([
-            transforms.Resize((img_h, img_w)),
+            transforms.Resize((28, 28)),
             transforms.ToTensor(),
             transforms.Normalize(mean=[.5], std=[.5])
         ])
         train_ds = _BreastMNIST(root=data_dir, split='train', download=True, transform=transform)
         test_ds  = _BreastMNIST(root=data_dir, split='test',  download=True, transform=transform)
-        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=num_workers)
-        test_loader  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        train_loader = torch.utils.data.DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=num_workers)
+        test_loader  = torch.utils.data.DataLoader(test_ds,  batch_size=batch_size, shuffle=False, num_workers=num_workers)
         return train_loader, test_loader
 
-# Dataloader for reconstruction
+
+    # Dataloader for reconstruction
 class dataloaders_recon():
     """
     this is the dataloader class. used in drawing the image to comparing image.

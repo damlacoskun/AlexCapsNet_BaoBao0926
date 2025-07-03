@@ -28,7 +28,7 @@ class AlexNet(nn.Module):
             nn.Linear(4096, 4096),
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(4096, 2),
+            nn.Linear(4096, 10),
         )
 
     def forward(self, img):
@@ -95,7 +95,7 @@ class AlexNet_CIFAR10(nn.Module):
             nn.Linear(4096, 4096),
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(4096, 2),
+            nn.Linear(4096, 10),
         )
 
     def forward(self, img):
@@ -401,15 +401,14 @@ class AlexCapsNet_MNIST(nn.Module):
         self.Cap = nn.Sequential(
             utils.PrimaryCaps(num_caps=32, in_channel=256, out_channel=8, kersel_size=2, stride=1, padding=0),
             # 32*[50,8,4,4]->[50,8,16,32]->[50,8,16*32(512)]
-            utils.DenseCapsule(in_num_caps=512, in_dim_caps=8, out_num_caps=2, out_dim_caps=16,
+            utils.DenseCapsule(in_num_caps=512, in_dim_caps=8, out_num_caps=10, out_dim_caps=16,
                                device=device, routings=3)
         )
 
     def forward(self, x):
         x = self.conv(x)
-        v = self.Cap(x)
-        logits = v.norm(dim=2)
-        return logits
+        x = self.Cap(x)
+        return x
 
 # 2: AlexNet
 class AlexNet_MNIST(nn.Module):
@@ -438,7 +437,7 @@ class AlexNet_MNIST(nn.Module):
             nn.ReLU(),
             nn.Dropout(0.5),
             # total class: 10
-            nn.Linear(4096, 2),
+            nn.Linear(4096, 10),
         )
 
     def forward(self, img):
@@ -459,15 +458,14 @@ class CapsNet_MNIST(nn.Module):
         self.Cap = nn.Sequential(
             utils.PrimaryCaps(num_caps=32, in_channel=256, out_channel=8, kersel_size=9, stride=2, padding=0), # [batch, 8, 32, 6, 6]
             # 32*[bs,8,6,6]->[50,8,36,32]->[50,8,36*32(1152)]
-            utils.DenseCapsule(in_num_caps=1152, in_dim_caps=8, out_num_caps=2, out_dim_caps=16,
+            utils.DenseCapsule(in_num_caps=1152, in_dim_caps=8, out_num_caps=10, out_dim_caps=16,
                                device=device, routings=3)
         )
 
     def forward(self, x):
         x = self.conv(x)
-        v = self.Cap(x)
-        logits = v.norm(dim=2)
-        return logits
+        x = self.Cap(x)
+        return x
 
 # 4 CapNet-Recon
 class CapsNet_Recon_MNIST(nn.Module):
@@ -480,10 +478,10 @@ class CapsNet_Recon_MNIST(nn.Module):
         self.Cap = nn.Sequential(
             utils.PrimaryCaps(num_caps=32, in_channel=256, out_channel=8, kersel_size=9, stride=2, padding=0), # [batch, 8, 32, 6, 6]
             # 32*[bs,8,6,6]->[50,8,36,32]->[50,8,36*32(1152)]
-            utils.DenseCapsule(in_num_caps=1152, in_dim_caps=8, out_num_caps=2, out_dim_caps=16,
+            utils.DenseCapsule(in_num_caps=1152, in_dim_caps=8, out_num_caps=10, out_dim_caps=16,
                                device=device, routings=3)
         )
-        self.reconstruction = utils.ReconstructionNet(num_dim=16, num_caps=2, img_size=28, original_chanel=1)
+        self.reconstruction = utils.ReconstructionNet(num_dim=16, num_caps=10, img_size=28, original_chanel=1)
 
     def forward(self, x, targets):
         feature = self.conv(x)
@@ -513,10 +511,10 @@ class AlexCapsNet_Recon_MNIST(nn.Module):
         self.Cap = nn.Sequential(
             utils.PrimaryCaps(num_caps=32, in_channel=256, out_channel=8, kersel_size=2, stride=1, padding=0),
             # 32*[50,8,4,4]->[50,8,16,32]->[50,8,16*32(512)]
-            utils.DenseCapsule(in_num_caps=512, in_dim_caps=8, out_num_caps=2, out_dim_caps=16,
+            utils.DenseCapsule(in_num_caps=512, in_dim_caps=8, out_num_caps=10, out_dim_caps=16,
                                device=device, routings=3)
         )
-        self.reconstruction = utils.ReconstructionNet(num_dim=16, num_caps=2, img_size=28, original_chanel=1)
+        self.reconstruction = utils.ReconstructionNet(num_dim=16, num_caps=10, img_size=28, original_chanel=1)
 
     def forward(self, x, targets):
         feature = self.conv(x)
@@ -542,7 +540,7 @@ class S_AlexCapsNet_MNIST(nn.Module):
         self.Cap = nn.Sequential(
             utils.PrimaryCaps(num_caps=32, in_channel=384, out_channel=8, kersel_size=2, stride=1, padding=0),
             # 32*[50,8,4,4]->[50,8,16,32]->[50,8,16*32(512)]
-            utils.DenseCapsule(in_num_caps=512, in_dim_caps=8, out_num_caps=2, out_dim_caps=16,
+            utils.DenseCapsule(in_num_caps=512, in_dim_caps=8, out_num_caps=10, out_dim_caps=16,
                                device=device, routings=3)
         )
 
@@ -897,6 +895,180 @@ class S_AlexCapsNet_FLOWER102(nn.Module):
             utils.DenseCapsule(in_num_caps=1152, in_dim_caps=8, out_num_caps=102, out_dim_caps=16,
                                device=device, routings=3)
         )
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.Cap(x)
+        return x
+
+
+
+#------------------------------------------------------------------------------------------------------------------------
+# 0: AlexCapsNet-BreastMNIST
+class AlexCapsNet_BreastMNIST(nn.Module):
+
+    def __init__(self, device):
+        super(AlexCapsNet_BreastMNIST, self).__init__()
+        self.conv = nn.Sequential(  # [50, 28, 28]
+            nn.Conv2d(in_channels=1, out_channels=96, kernel_size=3, stride=1, padding=1),  # [50, 96,28,28]
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),  # [50, 96,14,14]
+            nn.Conv2d(in_channels=96, out_channels=256, kernel_size=3, stride=1, padding=1),  # [50,256,14,14]
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),  # [50,256, 7, 7]
+            nn.Conv2d(in_channels=256, out_channels=384, kernel_size=3, stride=1, padding=1),  # [50,384, 7, 7]
+            nn.ReLU(),
+            nn.Conv2d(in_channels=384, out_channels=384, kernel_size=3, stride=1, padding=1),  # [50,384, 7, 7]
+            nn.ReLU(),
+            nn.Conv2d(in_channels=384, out_channels=256, kernel_size=3, stride=1, padding=1),  # [50,256, 7, 7]
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=1)  # [50,256, 5, 5]
+        )
+        self.Cap = nn.Sequential(
+            utils.PrimaryCaps(num_caps=32, in_channel=256, out_channel=8, kersel_size=2, stride=1, padding=0),
+            # 32*[50,8,4,4]->[50,8,16,32]->[50,8,16*32(512)]
+            utils.DenseCapsule(in_num_caps=512, in_dim_caps=8, out_num_caps=2, out_dim_caps=16,
+                               device=device, routings=3)
+        )
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.Cap(x)
+        return x
+
+# 2: AlexNet
+class AlexNet_BreastMNIST(nn.Module):
+    def __init__(self, device):
+        super(AlexNet_BreastMNIST, self).__init__()
+        self.conv = nn.Sequential(  # [50, 28, 28]
+            nn.Conv2d(in_channels=1, out_channels=96, kernel_size=3, stride=1, padding=1),  # [50, 96,28,28]
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),  # [50, 96,14,14]
+            nn.Conv2d(in_channels=96, out_channels=256, kernel_size=3, stride=1, padding=1),  # [50,256,14,14]
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),  # [50,256, 7, 7]
+            nn.Conv2d(in_channels=256, out_channels=384, kernel_size=3, stride=1, padding=1),  # [50,384, 7, 7]
+            nn.ReLU(),
+            nn.Conv2d(in_channels=384, out_channels=384, kernel_size=3, stride=1, padding=1),  # [50,384, 7, 7]
+            nn.ReLU(),
+            nn.Conv2d(in_channels=384, out_channels=256, kernel_size=3, stride=1, padding=1),  # [50,256, 7, 7]
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=1)  # [50,256, 5, 5]
+        )
+        self.fc = nn.Sequential(
+            nn.Linear(256 * 5 * 5, 4096),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(4096, 4096),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            # total class: 10
+            nn.Linear(4096, 2),
+        )
+
+    def forward(self, img):
+        feature = self.conv(img)
+        feature = feature.view(img.shape[0], -1)
+        output = self.fc(feature)
+        return output
+
+# 3: CapsNet 32*32
+class CapsNet_BreastMNIST(nn.Module):
+
+    def __init__(self, device):
+        super(CapsNet_BreastMNIST, self).__init__()
+        self.conv = nn.Sequential(  # [50,  3,28,28]
+            nn.Conv2d(in_channels=1, out_channels=256, kernel_size=9, stride=1, padding=0),  # [batch_size, 256, 20, 20]
+            nn.ReLU()
+        )
+        self.Cap = nn.Sequential(
+            utils.PrimaryCaps(num_caps=32, in_channel=256, out_channel=8, kersel_size=9, stride=2, padding=0), # [batch, 8, 32, 6, 6]
+            # 32*[bs,8,6,6]->[50,8,36,32]->[50,8,36*32(1152)]
+            utils.DenseCapsule(in_num_caps=1152, in_dim_caps=8, out_num_caps=2, out_dim_caps=16,
+                               device=device, routings=3)
+        )
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.Cap(x)
+        return x
+
+# 4 CapNet-Recon
+class CapsNet_Recon_BreastMNIST(nn.Module):
+    def __init__(self, device):
+        super(CapsNet_Recon_MNIST, self).__init__()
+        self.conv = nn.Sequential(  # [50, 3,28,28]
+            nn.Conv2d(in_channels=1, out_channels=256, kernel_size=9, stride=1, padding=0),  # [batch_size, 256, 20, 20]
+            nn.ReLU()
+        )
+        self.Cap = nn.Sequential(
+            utils.PrimaryCaps(num_caps=32, in_channel=256, out_channel=8, kersel_size=9, stride=2, padding=0), # [batch, 8, 32, 6, 6]
+            # 32*[bs,8,6,6]->[50,8,36,32]->[50,8,36*32(1152)]
+            utils.DenseCapsule(in_num_caps=1152, in_dim_caps=8, out_num_caps=2, out_dim_caps=16,
+                               device=device, routings=3)
+        )
+        self.reconstruction = utils.ReconstructionNet(num_dim=16, num_caps=2, img_size=28, original_chanel=1)
+
+    def forward(self, x, targets):
+        feature = self.conv(x)
+        v = self.Cap(feature)
+        reconstruction = self.reconstruction(v, targets)
+        return v, reconstruction
+
+# 5: AlexCapsNet
+class AlexCapsNet_Recon_BreastMNIST(nn.Module):
+    def __init__(self, device):
+        super(AlexCapsNet_Recon_BreastMNIST, self).__init__()
+        self.conv = nn.Sequential(  # [50, 28, 28]
+            nn.Conv2d(in_channels=1, out_channels=96, kernel_size=3, stride=1, padding=1),  # [50, 96,28,28]
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),  # [50, 96,14,14]
+            nn.Conv2d(in_channels=96, out_channels=256, kernel_size=3, stride=1, padding=1),  # [50,256,14,14]
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),  # [50,256, 7, 7]
+            nn.Conv2d(in_channels=256, out_channels=384, kernel_size=3, stride=1, padding=1),  # [50,384, 7, 7]
+            nn.ReLU(),
+            nn.Conv2d(in_channels=384, out_channels=384, kernel_size=3, stride=1, padding=1),  # [50,384, 7, 7]
+            nn.ReLU(),
+            nn.Conv2d(in_channels=384, out_channels=256, kernel_size=3, stride=1, padding=1),  # [50,256, 7, 7]
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=1)  # [50,256, 5, 5]
+        )
+        self.Cap = nn.Sequential(
+            utils.PrimaryCaps(num_caps=32, in_channel=256, out_channel=8, kersel_size=2, stride=1, padding=0),
+            # 32*[50,8,4,4]->[50,8,16,32]->[50,8,16*32(512)]
+            utils.DenseCapsule(in_num_caps=512, in_dim_caps=8, out_num_caps=2, out_dim_caps=16,
+                               device=device, routings=3)
+        )
+        self.reconstruction = utils.ReconstructionNet(num_dim=16, num_caps=2, img_size=28, original_chanel=1)
+
+    def forward(self, x, targets):
+        feature = self.conv(x)
+        v = self.Cap(feature)
+        reconstruction = self.reconstruction(v, targets)
+        return v, reconstruction
+
+# 6: Shallow AlexCapsNet
+class S_AlexCapsNet_BreastMNIST(nn.Module):
+
+    def __init__(self, device):
+        super(S_AlexCapsNet_BreastMNIST, self).__init__()
+        self.conv = nn.Sequential(  # [50, 28, 28]
+            nn.Conv2d(in_channels=1, out_channels=96, kernel_size=3, stride=1, padding=1),  # [50, 96,28,28]
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),  # [50, 96,14,14]
+            nn.Conv2d(in_channels=96, out_channels=256, kernel_size=3, stride=1, padding=1),  # [50,256,14,14]
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),  # [50,256, 7, 7]
+            nn.Conv2d(in_channels=256, out_channels=384, kernel_size=3, stride=1, padding=0),  # [50,384, 5, 5]
+            nn.ReLU()
+        )
+        self.Cap = nn.Sequential(
+            utils.PrimaryCaps(num_caps=32, in_channel=384, out_channel=8, kersel_size=2, stride=1, padding=0),
+            # 32*[50,8,4,4]->[50,8,16,32]->[50,8,16*32(512)]
+            utils.DenseCapsule(in_num_caps=512, in_dim_caps=8, out_num_caps=2, out_dim_caps=16,
+                               device=device, routings=3)
+        )
+
     def forward(self, x):
         x = self.conv(x)
         x = self.Cap(x)
